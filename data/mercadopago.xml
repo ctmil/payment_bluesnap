@@ -2,20 +2,20 @@
 <openerp>
     <data noupdate="1">
 
-        <record id="payment_acquirer_mercadopago" model="payment.acquirer">
-            <field name="name">MercadoPago</field>
-            <field name="provider">mercadopago</field>
+        <record id="payment_acquirer_bluesnap" model="payment.acquirer">
+            <field name="name">Bluesnap</field>
+            <field name="provider">bluesnap</field>
             <field name="company_id" ref="base.main_company"/>
-            <field name="view_template_id" ref="mercadopago_acquirer_button"/>
+            <field name="view_template_id" ref="bluesnap_acquirer_button"/>
             <field name="environment">test</field>
             <field name="pre_msg"><![CDATA[
-<p>You will be redirected to the MercadoPago website after cliking on the payment button.</p>]]></field>
-            <field name="mercadopago_email_account">dummy</field>
-            <field name="mercadopago_seller_account">dummy</field>
-            <field name="mercadopago_api_username">dummy</field>
-            <field name="mercadopago_api_password">dummy</field>
+<p>You will be redirected to the Bluesnap website after cliking on the payment button.</p>]]></field>
+            <field name="bluesnap_email_account">dummy</field>
+            <field name="bluesnap_seller_account">dummy</field>
+            <field name="bluesnap_api_username">dummy</field>
+            <field name="bluesnap_api_password">dummy</field>
         </record>
 
-        <!--function model="payment.acquirer" name="_migrate_mercadopago_account"/-->
+        <!--function model="payment.acquirer" name="_migrate_bluesnap_account"/-->
     </data>
 </openerp>

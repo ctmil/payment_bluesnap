@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from openerp import api, fields, models
 from openerp.exceptions import ValidationError
 from openerp.addons.payment_mercadopago.controllers.main \
-    import MercadoPagoController
+    import BluesnapController
 from openerp.addons.payment_mercadopago.mercadopago import \
     mercadopago
 from ..mercadopago.mercadopago import MLDATETIME
@@ -20,37 +20,37 @@ from ..mercadopago.mercadopago import MLDATETIME
 _logger = logging.getLogger(__name__)
 
 
-class AcquirerMercadopago(models.Model):
+class AcquirerBluesnap(models.Model):
     _inherit = 'payment.acquirer'
 
     def _get_mercadopago_urls(self, environment):
-        """ MercadoPago URLS """
+        """ Bluesnap URLS """
         if environment == 'prod':
             return {
                 'mercadopago_form_url':
                 'https://www.mercadopago.com/mla/checkout/pay',
                 'mercadopago_rest_url':
-                'https://api.mercadolibre.com/oauth/token',
+                'https://api.bluensap.com/oauth/token',
             }
         else:
             return {
                 'mercadopago_form_url':
                 'https://sandbox.mercadopago.com/mla/checkout/pay',
                 'mercadopago_rest_url':
-                'https://api.sandbox.mercadolibre.com/oauth/token',
+                'https://api.sandbox.bluensap.com/oauth/token',
             }
 
     @api.model
     def _get_providers(self):
-        providers = super(AcquirerMercadopago, self)._get_providers()
-        providers.append(['mercadopago', 'MercadoPago'])
+        providers = super(AcquirerBluesnap, self)._get_providers()
+        providers.append(['mercadopago', 'Bluesnap'])
         return providers
 
     mercadopago_client_id = fields.Char(
-        'MercadoPago Client Id',
+        'Bluesnap Client Id',
         required_if_provider='mercadopago')
     mercadopago_secret_key = fields.Char(
-        'MercadoPago Secret Key',
+        'Bluesnap Secret Key',
         required_if_provider='mercadopago')
 
     _defaults = {
@@ -110,12 +110,12 @@ class AcquirerMercadopago(models.Model):
     @api.multi
     def mercadopago_create_preference(self, values):
         """
-        Create a MercadoPago preference and related pending transaction.
+        Create a Bluesnap preference and related pending transaction.
         """
         self.ensure_one()
         acquirer = self
 
-        # Setup MercadoPago.
+        # Setup Bluesnap.
         MPago = mercadopago.MP(acquirer.mercadopago_client_id,
                                acquirer.mercadopago_secret_key)
 
@@ -148,15 +148,15 @@ class AcquirerMercadopago(models.Model):
             },
             "back_urls": {
                 "success": '%s' % urlparse.urljoin(
-                    base_url, MercadoPagoController._return_url),
+                    base_url, BluesnapController._return_url),
                 "failure": '%s' % urlparse.urljoin(
-                    base_url, MercadoPagoController._cancel_url),
+                    base_url, BluesnapController._cancel_url),
                 "pending": '%s' % urlparse.urljoin(
-                    base_url, MercadoPagoController._return_url)
+                    base_url, BluesnapController._return_url)
             },
             "auto_return": "approved",
             "notification_url": '%s' % urlparse.urljoin(
-                base_url, MercadoPagoController._notify_url),
+                base_url, BluesnapController._notify_url),
             "external_reference": values["reference"],
             "expires": True,
             "expiration_date_from": date_from.strftime(MLDATETIME),
@@ -281,7 +281,7 @@ class AcquirerMercadopago(models.Model):
         return res, cos
 
 
-class TxMercadoPago(models.Model):
+class TxBluesnap(models.Model):
     _inherit = 'payment.transaction'
 
     @api.model
@@ -290,14 +290,14 @@ class TxMercadoPago(models.Model):
         reference = data.get('external_reference')
 
         if not reference:
-            error_msg = 'MercadoPago: received data with missing reference'\
+            error_msg = 'Bluesnap: received data with missing reference'\
                 ' (%s)' % (reference)
             _logger.error(error_msg)
             raise ValidationError(error_msg)
 
         tx = self.search([('reference', '=', reference)])
         if not tx or len(tx) > 1:
-            error_msg = 'MercadoPago: received data for reference %s' %\
+            error_msg = 'Bluesnap: received data for reference %s' %\
                 (reference)
             if not tx:
                 error_msg += '; no order found'
@@ -331,28 +331,28 @@ class TxMercadoPago(models.Model):
             ).id
         }
         if status in ['approved', 'processed', 'accredited']:
-            _logger.info('Validated MercadoPago payment for tx %s: set as done'
+            _logger.info('Validated Bluesnap payment for tx %s: set as done'
                          % (tx.reference))
             data.update(
                 state='done',
                 date_validate=data.get('payment_date', fields.datetime.now())
             )
         elif status in ['pending', 'in_process', 'in_mediation']:
-            _logger.info('Received notification for MercadoPago payment %s:'
+            _logger.info('Received notification for Bluesnap payment %s:'
                          ' set as pending' % (tx.reference))
             data.update(
                 state='pending',
                 state_message=data.get('pending_reason', '')
             )
         elif status in ['cancelled', 'refunded', 'charged_back', 'rejected']:
-            _logger.info('Received notification for MercadoPago payment %s:'
+            _logger.info('Received notification for Bluesnap payment %s:'
                          ' set as cancelled' % (tx.reference))
             data.update(
                 state='cancel',
                 state_message=data.get('cancel_reason', '')
             )
         else:
-            error = 'Received unrecognized status for MercadoPago payment %s:'\
+            error = 'Received unrecognized status for Bluesnap payment %s:'\
                 ' %s, set as error' % (tx.reference, status)
             _logger.info(error)
             data.update(
@@ -366,7 +366,7 @@ class TxMercadoPago(models.Model):
 
     @api.model
     def _mercadopago_try_url(self, request, tries=3):
-        """ Try to contact MercadoPago. Due to some issues, internal service errors
+        """ Try to contact Bluesnap. Due to some issues, internal service errors
         seem to be quite frequent. Several tries are done before considering
         the communication as failed.
 
@@ -388,7 +388,7 @@ class TxMercadoPago(models.Model):
                 e.close()
                 if tries and res and \
                         json.loads(res)['name'] == 'INTERNAL_SERVICE_ERROR':
-                    _logger.warning('Failed contacting MercadoPago,'
+                    _logger.warning('Failed contacting Bluesnap,'
                                     ' retrying (%s remaining)' % tries)
             tries = tries - 1
         if not res:
@@ -494,7 +494,7 @@ class TxMercadoPago(models.Model):
         values = json.loads(data)
         status = values.get('state')
         if status in ['approved']:
-            _logger.info('Validated Mercadopago s2s payment for tx %s:'
+            _logger.info('Validated Bluesnap s2s payment for tx %s:'
                          ' set as done' % (tx.reference))
             tx.write({
                 'state': 'done',
@@ -504,7 +504,7 @@ class TxMercadoPago(models.Model):
             })
             return True
         elif status in ['pending', 'expired']:
-            _logger.info('Received notification for MercadoPago s2s payment %s:'
+            _logger.info('Received notification for Bluesnap s2s payment %s:'
                          ' set as pending' % (tx.reference))
             tx.write({
                 'state': 'pending',
@@ -513,7 +513,7 @@ class TxMercadoPago(models.Model):
             })
             return True
         else:
-            error = 'Received unrecognized status for MercadoPago'\
+            error = 'Received unrecognized status for Bluesnap'\
                 ' s2s payment %s: %s, set as error' % (tx.reference, status)
             _logger.info(error)
             tx.write({

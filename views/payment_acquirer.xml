@@ -2,19 +2,19 @@
 <openerp>
     <data>
 
-        <record id="acquirer_form_mercadopago" model="ir.ui.view">
-            <field name="name">acquirer.form.mercadopago</field>
+        <record id="acquirer_form_bluesnap" model="ir.ui.view">
+            <field name="name">acquirer.form.bluesnap</field>
             <field name="model">payment.acquirer</field>
             <field name="inherit_id" ref="payment.acquirer_form"/>
             <field name="arch" type="xml">
                 <xpath expr='//group[@name="acquirer"]' position='after'>
-                    <group attrs="{'invisible': [('provider', '!=', 'mercadopago')]}">
+                    <group attrs="{'invisible': [('provider', '!=', 'bluesnap')]}">
                         <group>
                             <group>
 
-                                <field name="mercadopago_email"/>
-                                <field name="mercadopago_client_id"/>
-                                <field name="mercadopago_secret_key"/>
+                                <field name="bluesnap_email"/>
+                                <field name="bluesnap_client_id"/>
+                                <field name="bluesnap_secret_key"/>
 
                             </group>
                         </group>
@@ -23,13 +23,13 @@
             </field>
         </record>
 
-        <record id="transaction_form_mercadopago" model="ir.ui.view">
-            <field name="name">acquirer.transaction.form.mercadopago</field>
+        <record id="transaction_form_bluesnap" model="ir.ui.view">
+            <field name="name">acquirer.transaction.form.bluesnap</field>
             <field name="model">payment.transaction</field>
             <field name="inherit_id" ref="payment.transaction_form"/>
             <field name="arch" type="xml">
                 <xpath expr='//notebook' position='inside'>
-                    <page string="MercadoPago TX Details">
+                    <page string="Bluesnap TX Details">
                         <group>
                         </group>
                     </page>

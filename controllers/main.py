@@ -11,13 +11,13 @@ from openerp.exceptions import ValidationError
 _logger = logging.getLogger(__name__)
 
 
-class MercadoPagoController(http.Controller):
-    _notify_url = '/payment/mercadopago/ipn/'
-    _return_url = '/payment/mercadopago/dpn/'
-    _cancel_url = '/payment/mercadopago/cancel/'
+class BluesnapController(http.Controller):
+    _notify_url = '/payment/bluesnap/ipn/'
+    _return_url = '/payment/bluesnap/dpn/'
+    _cancel_url = '/payment/bluesnap/cancel/'
 
     def _get_return_url(self, **post):
-        """ Extract the return URL from the data coming from MercadoPago. """
+        """ Extract the return URL from the data coming from Bluesnap. """
         if post.get('collection_status') in ['approved']:
             return request.registry['ir.config_parameter'] \
                 .get_param(request.cr,
@@ -29,14 +29,14 @@ class MercadoPagoController(http.Controller):
                            SUPERUSER_ID,
                            'web.site.payment.cancelled.url', '/')
 
-    def mercadopago_validate_data(self, **post):
-        """ MercadoPago IPN: three steps validation to ensure data correctness
+    def bluesnap_validate_data(self, **post):
+        """ Bluesnap IPN: three steps validation to ensure data correctness
 
          - step 1: return an empty HTTP 200 response -> will be done at the end
            by returning ''
-         - step 2: POST the complete, unaltered message back to MercadoPago (
+         - step 2: POST the complete, unaltered message back to Bluesnap (
            preceded by cmd=_notify-validate), with same encoding
-         - step 3: mercadopago send either VERIFIED or INVALID (single word)
+         - step 3: bluesnap send either VERIFIED or INVALID (single word)
 
         Once data is validated, process it. """
 
@@ -45,7 +45,7 @@ class MercadoPagoController(http.Controller):
 
         reference = post.get('external_reference')
         if not reference:
-            raise ValidationError(_("No local reference from MercadoPago"))
+            raise ValidationError(_("No local reference from Bluesnap"))
 
         tx_ids = transaction.search(cr, uid,
                                     [('reference', '=', reference)],
@@ -68,12 +68,12 @@ class MercadoPagoController(http.Controller):
             cr,
             SUPERUSER_ID,
             post,
-            'mercadopago',
+            'bluesnap',
             context=context)
 
-    @http.route('/payment/mercadopago/ipn/', type='json', auth='none')
-    def mercadopago_ipn(self, **post):
-        """ MercadoPago IPN. """
+    @http.route('/payment/bluesnap/ipn/', type='json', auth='none')
+    def bluesnap_ipn(self, **post):
+        """ Bluesnap IPN. """
         topic = request.httprequest.args.get('topic')
         tid = request.httprequest.args.get('id')
 
@@ -84,46 +84,46 @@ class MercadoPagoController(http.Controller):
 
         if topic == 'merchant_order':
             # New order with transaction.
-            tx, mo = acquirer.mercadopago_get_transaction_by_merchant_order(
+            tx, mo = acquirer.bluesnap_get_transaction_by_merchant_order(
                 cr, SUPERUSER_ID, tid)
             if tx:
                 _logger.info(
-                    "MercadoPago: Confirm order %s for local order %s." %
+                    "Bluesnap: Confirm order %s for local order %s." %
                     (tid, tx.reference))
             else:
                 # New order without transaction. Need create one!
-                _logger.info("MercadoPago: New order %s." % tid)
+                _logger.info("Bluesnap: New order %s." % tid)
         elif topic == 'payment':
             # Payment confirmation.
-            tx, co = acquirer.mercadopago_get_transaction_by_collection(
+            tx, co = acquirer.bluesnap_get_transaction_by_collection(
                 cr, SUPERUSER_ID, tid)
             if tx:
-                _logger.info("MercadoPago: New payment to %s." % tid)
-                tx.form_feedback(co[0], 'mercadopago')
+                _logger.info("Bluesnap: New payment to %s." % tid)
+                tx.form_feedback(co[0], 'bluesnap')
             else:
                 # New payment without transaction. Need create a payment!
-                _logger.info("MercadoPago: New payment %s." % tid)
+                _logger.info("Bluesnap: New payment %s." % tid)
         else:
-            _logger.info("MercadoPago: Unknown topic %s for %s."
+            _logger.info("Bluesnap: Unknown topic %s for %s."
                          % (topic, tid))
 
         return ''
 
-    @http.route('/payment/mercadopago/dpn', type='http', auth="none")
-    def mercadopago_dpn(self, **post):
-        """ MercadoPago DPN """
+    @http.route('/payment/bluesnap/dpn', type='http', auth="none")
+    def bluesnap_dpn(self, **post):
+        """ Bluesnap DPN """
         return_url = self._get_return_url(**post)
-        self.mercadopago_validate_data(**post)
+        self.bluesnap_validate_data(**post)
         return werkzeug.utils.redirect(return_url)
 
-    @http.route('/payment/mercadopago/cancel', type='http', auth="none")
-    def mercadopago_cancel(self, **post):
-        """ When the user cancels its MercadoPago payment: GET on this route """
-        _logger.info('Beginning MercadoPago cancel with post data %s',
+    @http.route('/payment/bluesnap/cancel', type='http', auth="none")
+    def bluesnap_cancel(self, **post):
+        """ When the user cancels its Bluesnap payment: GET on this route """
+        _logger.info('Beginning Bluesnap cancel with post data %s',
                      pprint.pformat(post))  # debug
         return_url = self._get_return_url(**post)
         status = post.get('collection_status')
         if status == 'null':
             post['collection_status'] = 'cancelled'
-        self.mercadopago_validate_data(**post)
+        self.bluesnap_validate_data(**post)
         return werkzeug.utils.redirect(return_url)

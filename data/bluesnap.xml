@@ -3,13 +3,13 @@
     <data noupdate="1">
 
         <record id="payment_acquirer_bluesnap" model="payment.acquirer">
-            <field name="name">Bluesnap</field>
+            <field name="name">BlueSnap</field>
             <field name="provider">bluesnap</field>
             <field name="company_id" ref="base.main_company"/>
             <field name="view_template_id" ref="bluesnap_acquirer_button"/>
             <field name="environment">test</field>
             <field name="pre_msg"><![CDATA[
-<p>You will be redirected to the Bluesnap website after cliking on the payment button.</p>]]></field>
+<p>You will be redirected to the BlueSnap website after cliking on the payment button.</p>]]></field>
             <field name="bluesnap_email_account">dummy</field>
             <field name="bluesnap_seller_account">dummy</field>
             <field name="bluesnap_api_username">dummy</field>

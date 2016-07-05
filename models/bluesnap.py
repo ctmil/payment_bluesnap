@@ -5,53 +5,43 @@ try:
 except ImportError:
     import json
 import logging
-import urlparse
 import urllib2
-from datetime import datetime, timedelta
 
 from openerp import api, fields, models
 from openerp.exceptions import ValidationError
-from openerp.addons.payment_mercadopago.controllers.main \
-    import BluesnapController
-from openerp.addons.payment_mercadopago.mercadopago import \
-    mercadopago
-from ..mercadopago.mercadopago import MLDATETIME
 
 _logger = logging.getLogger(__name__)
 
 
-class AcquirerBluesnap(models.Model):
+class AcquirerBlueSnap(models.Model):
     _inherit = 'payment.acquirer'
 
-    def _get_mercadopago_urls(self, environment):
-        """ Bluesnap URLS """
+    def _get_bluesnap_urls(self, environment):
+        """ BlueSnap URLS """
         if environment == 'prod':
             return {
-                'mercadopago_form_url':
-                'https://www.mercadopago.com/mla/checkout/pay',
-                'mercadopago_rest_url':
-                'https://api.bluensap.com/oauth/token',
+                'bluesnap_form_url':
+                'https://ws.bluesnap.com/buynow/checkout',
+                'bluesnap_rest_url':
+                'https://ws.bluensap.com/oauth/token',
             }
         else:
             return {
-                'mercadopago_form_url':
-                'https://sandbox.mercadopago.com/mla/checkout/pay',
-                'mercadopago_rest_url':
-                'https://api.sandbox.bluensap.com/oauth/token',
+                'bluesnap_form_url':
+                'https://sandbox.bluesnap.com/buynow/checkout',
+                'bluesnap_rest_url':
+                'https://sandbox.sandbox.bluensap.com/oauth/token',
             }
 
     @api.model
     def _get_providers(self):
-        providers = super(AcquirerBluesnap, self)._get_providers()
-        providers.append(['mercadopago', 'Bluesnap'])
+        providers = super(AcquirerBlueSnap, self)._get_providers()
+        providers.append(['bluesnap', 'BlueSnap'])
         return providers
 
-    mercadopago_client_id = fields.Char(
-        'Bluesnap Client Id',
-        required_if_provider='mercadopago')
-    mercadopago_secret_key = fields.Char(
-        'Bluesnap Secret Key',
-        required_if_provider='mercadopago')
+    bluesnap_merchant_id = fields.Char(
+        'BlueSnap Merchant Id',
+        required_if_provider='bluesnap')
 
     _defaults = {
         'fees_active': False,
@@ -59,20 +49,20 @@ class AcquirerBluesnap(models.Model):
         'fees_dom_var': 3.4,
         'fees_int_fixed': 0.35,
         'fees_int_var': 3.9,
-        'mercadopago_api_enabled': False,
+        'bluesnap_api_enabled': False,
     }
 
     @api.multi
-    def mercadopago_compute_fees(self, amount, currency_id, country_id):
+    def bluesnap_compute_fees(self, amount, currency_id, country_id):
         """
-        Compute mercadopago fees.
+        Compute bluesnap fees.
         :param float amount: the amount to pay
         :param integer country_id: an ID of a res.country, or None. This is
                                    the customer's country, to be compared to
                                    the acquirer company country.
         :return float fees: computed fees
         """
-        print "[%s]mercadopago_compute_fees" % __name__
+        print "[%s]bluesnap_compute_fees" % __name__
         self.ensure_one()
         acquirer = self
         if not acquirer.fees_active:
@@ -88,142 +78,49 @@ class AcquirerBluesnap(models.Model):
         return fees
 
     @api.multi
-    def mercadopago_form_generate_values(self, values):
-        print "[%s]mercadopago_form_generate_values" % __name__
+    def bluesnap_form_generate_values(self, values):
+        print "[%s]bluesnap_form_generate_values" % __name__
         self.ensure_one()
 
         acquirer = self
 
-        if not acquirer.mercadopago_client_id or \
-           not acquirer.mercadopago_secret_key:
-            error_msg = 'YOU MUST COMPLETE acquirer.mercadopago_client_id'\
-                ' and acquirer.mercadopago_secret_key'
+        if not acquirer.bluesnap_merchant_id:
+            error_msg = 'YOU MUST COMPLETE acquirer.bluesnap_merchant_id'
             _logger.error(error_msg)
             raise ValidationError(error_msg)
 
         if values.get("reference", "/") != "/":
-            values["acquirer_reference"], values['tx_url'] = acquirer \
-                .mercadopago_create_preference(values)
+            import pdb; pdb.set_trace()
 
         return values
 
     @api.multi
-    def mercadopago_create_preference(self, values):
-        """
-        Create a Bluesnap preference and related pending transaction.
-        """
-        self.ensure_one()
+    def bluesnap_get_form_action_url(self):
+        print "[%s]bluesnap_get_form_action_url" % __name__
         acquirer = self
-
-        # Setup Bluesnap.
-        MPago = mercadopago.MP(acquirer.mercadopago_client_id,
-                               acquirer.mercadopago_secret_key)
-
-        if not MPago:
-            error_msg = 'Can\'t create mercadopago instance.'
-            _logger.error(error_msg)
-            raise ValidationError(error_msg)
-
-        MPago.sandbox_mode(acquirer.environment != "prod")
-
-        # Requiered data to setup preferences.
-        base_url = self.env['ir.config_parameter'].sudo().get_param(
-            'web.base.url')
-        date_from = fields.Datetime \
-            .context_timestamp(self, datetime.now())
-
-        # Setup Preference.
-        preference = {
-            "items": [{
-                "title": "Orden Ecommerce " + values["reference"],
-                "quantity": 1,
-                "currency_id":  values['currency']
-                and values['currency'].name or '',
-                "unit_price": values["amount"]
-            }],
-            "payer": {
-                "name": values["billing_partner_first_name"],
-                "surname": values["billing_partner_last_name"],
-                "email": values["billing_partner_email"]
-            },
-            "back_urls": {
-                "success": '%s' % urlparse.urljoin(
-                    base_url, BluesnapController._return_url),
-                "failure": '%s' % urlparse.urljoin(
-                    base_url, BluesnapController._cancel_url),
-                "pending": '%s' % urlparse.urljoin(
-                    base_url, BluesnapController._return_url)
-            },
-            "auto_return": "approved",
-            "notification_url": '%s' % urlparse.urljoin(
-                base_url, BluesnapController._notify_url),
-            "external_reference": values["reference"],
-            "expires": True,
-            "expiration_date_from": date_from.strftime(MLDATETIME),
-            "expiration_date_to": (date_from + timedelta(days=2))
-            .strftime(MLDATETIME)
-        }
-
-        # Generate Preference.
-        res = MPago.create_preference(preference)
-
-        print "Pref:", res
-
-        if 'response' not in res or 'id' not in res['response']:
-            error_msg = 'Returning response is:'
-            error_msg += json.dumps(res, indent=2)
-            _logger.error(error_msg)
-            raise ValidationError(error_msg)
-
-        pref_id = res['response']['id']
-        form_url = res['response']['init_point'] \
-            if acquirer.environment == "prod" \
-            else res['response']['sandbox_init_point']
-
-        return pref_id, form_url
-
-    @api.multi
-    def mercadopago_get_form_action_url(self):
-        print "[%s]mercadopago_get_form_action_url" % __name__
-        acquirer = self
-        mercadopago_urls = self._get_mercadopago_urls(
-            acquirer.environment)['mercadopago_form_url']
-        return mercadopago_urls
-
-    @api.multi
-    def _mercadopago_s2s_get_access_token(self):
-        """
-        """
-        print "[%s]_mercadopago_s2s_get_access_token" % __name__
-
-        res = dict.fromkeys(self.ids, False)
-        for acquirer in self:
-            MPago = mercadopago.MP(acquirer.mercadopago_client_id,
-                                   acquirer.mercadopago_secret_key)
-            res[acquirer.id] = MPago.get_access_token()
-        return res
+        bluesnap_urls = self._get_bluesnap_urls(
+            acquirer.environment)['bluesnap_form_url']
+        return bluesnap_urls
 
     @api.model
-    def mercadopago_get_merchant_order(self, merchant_order_id):
-        print "[%s]mercadopago_get_merchant_order" % __name__
+    def bluesnap_get_merchant_order(self, merchant_order_id):
+        print "[%s]bluesnap_get_merchant_order" % __name__
         self.ensure_one()
-        acq = self
-        MPago = mercadopago.MP(acq.mercadopago_client_id,
-                               acq.mercadopago_secret_key)
-        merchant_order = MPago.get_merchant_order(merchant_order_id)
+        import pdb; pdb.set_trace()
+        merchant_order = None
 
         return merchant_order.get('response', False)
 
     @api.model
-    def mercadopago_get_transaction_by_merchant_order(self, merchant_order_id):
-        print "[%s]mercadopago_get_transaction_by_merchant_order" % __name__
+    def bluesnap_get_transaction_by_merchant_order(self, merchant_order_id):
+        print "[%s]bluesnap_get_transaction_by_merchant_order" % __name__
         transaction = self.env['payment.transaction']
 
         res = transaction
         mos = []
-        for acq in self.search([('provider', '=', 'mercadopago')]):
+        for acq in self.search([('provider', '=', 'bluesnap')]):
             merchant_order = acq \
-                .mercadopago_get_merchant_order(merchant_order_id)
+                .bluesnap_get_merchant_order(merchant_order_id)
 
             external_reference = merchant_order.get('external_reference')
             if not external_reference:
@@ -241,28 +138,28 @@ class AcquirerBluesnap(models.Model):
         return res, mos
 
     @api.model
-    def mercadopago_get_collection(self, collection_id):
-        print "[%s]mercadopago_get_collection" % __name__
+    def bluesnap_get_collection(self, collection_id):
+        print "[%s]bluesnap_get_collection" % __name__
 
         self.ensure_one()
-        acq = self
-        MPago = mercadopago.MP(acq.mercadopago_client_id,
-                               acq.mercadopago_secret_key)
-        collection_info = MPago.get_collection(collection_id)
+        import pdb; pdb.set_trace()
+        collection_info = None
 
         return collection_info.get('response', {}).get('collection', False)
 
     @api.model
-    def mercadopago_get_transaction_by_collection(self, collection_id):
-        print "[%s]mercadopago_get_transaction_by_collection" % __name__
+    def bluesnap_get_transaction_by_collection(self, collection_id):
+        print "[%s]bluesnap_get_transaction_by_collection" % __name__
+
+        import pdb; pdb.set_trace()
 
         transaction = self.env['payment.transaction']
 
         res = transaction
         cos = []
-        for acq in self.search([('provider', '=', 'mercadopago')]):
+        for acq in self.search([('provider', '=', 'bluesnap')]):
             collection = acq \
-                .mercadopago_get_collection(collection_id)
+                .bluesnap_get_collection(collection_id)
 
             external_reference = collection.get('external_reference')
 
@@ -281,23 +178,23 @@ class AcquirerBluesnap(models.Model):
         return res, cos
 
 
-class TxBluesnap(models.Model):
+class TxBlueSnap(models.Model):
     _inherit = 'payment.transaction'
 
     @api.model
-    def _mercadopago_form_get_tx_from_data(self, data):
-        print "[%s]_mercadopago_form_get_tx_from_data" % __name__
+    def _bluesnap_form_get_tx_from_data(self, data):
+        print "[%s]_bluesnap_form_get_tx_from_data" % __name__
         reference = data.get('external_reference')
 
         if not reference:
-            error_msg = 'Bluesnap: received data with missing reference'\
+            error_msg = 'BlueSnap: received data with missing reference'\
                 ' (%s)' % (reference)
             _logger.error(error_msg)
             raise ValidationError(error_msg)
 
         tx = self.search([('reference', '=', reference)])
         if not tx or len(tx) > 1:
-            error_msg = 'Bluesnap: received data for reference %s' %\
+            error_msg = 'BlueSnap: received data for reference %s' %\
                 (reference)
             if not tx:
                 error_msg += '; no order found'
@@ -309,13 +206,13 @@ class TxBluesnap(models.Model):
         return tx[0]
 
     @api.model
-    def _mercadopago_form_get_invalid_parameters(self, tx, data):
-        print "[%s]_mercadopago_form_get_invalid_parameters" % __name__
+    def _bluesnap_form_get_invalid_parameters(self, tx, data):
+        print "[%s]_bluesnap_form_get_invalid_parameters" % __name__
         return []
 
     @api.model
-    def _mercadopago_form_validate(self, tx, data):
-        print "[%s]_mercadopago_form_validate" % __name__
+    def _bluesnap_form_validate(self, tx, data):
+        print "[%s]_bluesnap_form_validate" % __name__
         status = data.get('collection_status') or data.get('status_detail')
         pay = tx.env['payment.method']
         data = {
@@ -331,28 +228,28 @@ class TxBluesnap(models.Model):
             ).id
         }
         if status in ['approved', 'processed', 'accredited']:
-            _logger.info('Validated Bluesnap payment for tx %s: set as done'
+            _logger.info('Validated BlueSnap payment for tx %s: set as done'
                          % (tx.reference))
             data.update(
                 state='done',
                 date_validate=data.get('payment_date', fields.datetime.now())
             )
         elif status in ['pending', 'in_process', 'in_mediation']:
-            _logger.info('Received notification for Bluesnap payment %s:'
+            _logger.info('Received notification for BlueSnap payment %s:'
                          ' set as pending' % (tx.reference))
             data.update(
                 state='pending',
                 state_message=data.get('pending_reason', '')
             )
         elif status in ['cancelled', 'refunded', 'charged_back', 'rejected']:
-            _logger.info('Received notification for Bluesnap payment %s:'
+            _logger.info('Received notification for BlueSnap payment %s:'
                          ' set as cancelled' % (tx.reference))
             data.update(
                 state='cancel',
                 state_message=data.get('cancel_reason', '')
             )
         else:
-            error = 'Received unrecognized status for Bluesnap payment %s:'\
+            error = 'Received unrecognized status for BlueSnap payment %s:'\
                 ' %s, set as error' % (tx.reference, status)
             _logger.info(error)
             data.update(
@@ -365,8 +262,8 @@ class TxBluesnap(models.Model):
     # --------------------------------------------------
 
     @api.model
-    def _mercadopago_try_url(self, request, tries=3):
-        """ Try to contact Bluesnap. Due to some issues, internal service errors
+    def _bluesnap_try_url(self, request, tries=3):
+        """ Try to contact BlueSnap. Due to some issues, internal service errors
         seem to be quite frequent. Several tries are done before considering
         the communication as failed.
 
@@ -376,7 +273,7 @@ class TxBluesnap(models.Model):
             Experimental code. You should not use it before OpenERP v8 official
             release.
         """
-        print "[%s]_mercadopago_try_url" % __name__
+        print "[%s]_bluesnap_try_url" % __name__
         raise NotImplemented
         done, res = False, None
         while (not done and tries):
@@ -388,7 +285,7 @@ class TxBluesnap(models.Model):
                 e.close()
                 if tries and res and \
                         json.loads(res)['name'] == 'INTERNAL_SERVICE_ERROR':
-                    _logger.warning('Failed contacting Bluesnap,'
+                    _logger.warning('Failed contacting BlueSnap,'
                                     ' retrying (%s remaining)' % tries)
             tries = tries - 1
         if not res:
@@ -397,153 +294,3 @@ class TxBluesnap(models.Model):
         result = res.read()
         res.close()
         return result
-
-    @api.model
-    def _mercadopago_s2s_send(self, values, cc_values):
-        """
-         .. versionadded:: pre-v8 saas-3
-         .. warning::
-
-            Experimental code. You should not use it before OpenERP v8 official
-            release.
-        """
-        print "[%s]_mercadopago_s2s_send" % __name__
-        raise NotImplemented
-
-        tx = self.create(values)
-
-        headers = {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer %s' %
-            tx.acquirer_id._mercadopago_s2s_get_access_token(
-            )[tx.acquirer_id.id],
-        }
-        data = {
-            'intent': 'sale',
-            'transactions': [{
-                'amount': {
-                    'total': '%.2f' % tx.amount,
-                    'currency': tx.currency_id.name,
-                },
-                'description': tx.reference,
-            }]
-        }
-        if cc_values:
-            data['payer'] = {
-                'payment_method': 'credit_card',
-                'funding_instruments': [{
-                    'credit_card': {
-                        'number': cc_values['number'],
-                        'type': cc_values['brand'],
-                        'expire_month': cc_values['expiry_mm'],
-                        'expire_year': cc_values['expiry_yy'],
-                        'cvv2': cc_values['cvc'],
-                        'first_name': tx.partner_name,
-                        'last_name': tx.partner_name,
-                        'billing_address': {
-                            'line1': tx.partner_address,
-                            'city': tx.partner_city,
-                            'country_code': tx.partner_country_id.code,
-                            'postal_code': tx.partner_zip,
-                        }
-                    }
-                }]
-            }
-        else:
-            # TODO: complete redirect URLs
-            data['redirect_urls'] = {
-                # 'return_url': 'http://example.com/your_redirect_url/',
-                # 'cancel_url': 'http://example.com/your_cancel_url/',
-            },
-            data['payer'] = {
-                'payment_method': 'mercadopago',
-            }
-        data = json.dumps(data)
-
-        request = urllib2.Request(
-            'https://api.sandbox.paypal.com/v1/payments/payment', data, headers)
-        result = self._mercadopago_try_url(request, tries=3)
-        return (tx.id, result)
-
-    @api.model
-    def _mercadopago_s2s_get_invalid_parameters(self, data):
-        """
-         .. versionadded:: pre-v8 saas-3
-         .. warning::
-
-            Experimental code. You should not use it before OpenERP v8 official
-            release.
-        """
-        print "[%s]_mercadopago_s2s_get_invalid_parameters" % __name__
-        raise NotImplemented
-        invalid_parameters = []
-        return invalid_parameters
-
-    @api.multi
-    def _mercadopago_s2s_validate(self, data):
-        """
-         .. versionadded:: pre-v8 saas-3
-         .. warning::
-
-            Experimental code. You should not use it before OpenERP v8 official
-            release.
-        """
-        print "[%s]_mercadopago_s2s_validate" % __name__
-        raise NotImplemented
-        tx = self
-        values = json.loads(data)
-        status = values.get('state')
-        if status in ['approved']:
-            _logger.info('Validated Bluesnap s2s payment for tx %s:'
-                         ' set as done' % (tx.reference))
-            tx.write({
-                'state': 'done',
-                'date_validate': values.get('udpate_time',
-                                            fields.datetime.now()),
-                'mercadopago_txn_id': values['id'],
-            })
-            return True
-        elif status in ['pending', 'expired']:
-            _logger.info('Received notification for Bluesnap s2s payment %s:'
-                         ' set as pending' % (tx.reference))
-            tx.write({
-                'state': 'pending',
-                # 'state_message': data.get('pending_reason', ''),
-                'mercadopago_txn_id': values['id'],
-            })
-            return True
-        else:
-            error = 'Received unrecognized status for Bluesnap'\
-                ' s2s payment %s: %s, set as error' % (tx.reference, status)
-            _logger.info(error)
-            tx.write({
-                'state': 'error',
-                # 'state_message': error,
-                'mercadopago_txn_id': values['id'],
-            })
-            return False
-
-    @api.multi
-    def _mercadopago_s2s_get_tx_status(self):
-        """
-         .. versionadded:: pre-v8 saas-3
-         .. warning::
-
-            Experimental code. You should not use it before OpenERP v8 official
-            release.
-        """
-        print "[%s]_mercadopago_s2s_get_tx_status" % __name__
-        raise NotImplemented
-        # TDETODO: check tx.mercadopago_txn_id is set
-        tx = self
-        headers = {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer %s' %
-            tx.acquirer_id._mercadopago_s2s_get_access_token(
-            )[tx.acquirer_id.id],
-        }
-        url = 'https://api.sandbox.paypal.com/v1/payments/payment/%s' %\
-            (tx.mercadopago_txn_id)
-        request = urllib2.Request(url, headers=headers)
-        data = self._mercadopago_try_url(request, tries=3)
-        return tx.s2s_feedback(data)

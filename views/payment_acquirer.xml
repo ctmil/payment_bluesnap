@@ -29,7 +29,7 @@
             <field name="inherit_id" ref="payment.transaction_form"/>
             <field name="arch" type="xml">
                 <xpath expr='//notebook' position='inside'>
-                    <page string="Bluesnap TX Details">
+                    <page string="BlueSnap TX Details">
                         <group>
                         </group>
                     </page>

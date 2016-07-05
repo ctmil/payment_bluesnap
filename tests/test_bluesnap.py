@@ -26,8 +26,7 @@ class BlueSnapCommon(PaymentAcquirerCommon):
 
         self.payment_acquirer \
             .write(self.cr, self.uid, self.bluesnap_id, {
-                'bluesnap_client_id': '6998660949904288',
-                'bluesnap_secret_key': 'l4jtD08NVv9nPcrFi9T6NvlO1MFPEU2O',
+                'bluesnap_merchand_id': '500801',
             })
 
         # tde+seller@openerp.com -
@@ -112,8 +111,8 @@ class BlueSnapForm(BlueSnapCommon):
             cr, uid,
             self.bluesnap_id, {'fees_active': False}, context)
 
-        bluesnap = self.payment_acquirer.browse(cr, uid,
-                                                   self.bluesnap_id, context)
+        bluesnap = self\
+            .payment_acquirer.browse(cr, uid, self.bluesnap_id, context)
         self.assertEqual(bluesnap.environment,
                          'test',
                          'test without test environment')
@@ -156,7 +155,7 @@ class BlueSnapForm(BlueSnapCommon):
         tree = objectify.fromstring(res)
         self.assertEqual(
             tree.get('href').split('?')[0],
-            'https://sandbox.bluesnap.com/mla/checkout/pay',
+            'https://sandbox.bluesnap.com/buynow/checkout',
             'bluesnap: wrong url')
 
     def test_11_bluesnap_form_with_fees(self):
@@ -207,8 +206,8 @@ class BlueSnapForm(BlueSnapCommon):
     def test_20_bluesnap_form_management(self):
         cr, uid, context = self.cr, self.uid, {}
         # be sure not to do stupid things
-        bluesnap = self.payment_acquirer.browse(cr, uid,
-                                                   self.bluesnap_id, context)
+        bluesnap = self\
+            .payment_acquirer.browse(cr, uid, self.bluesnap_id, context)
         self.assertEqual(bluesnap.environment,
                          'test',
                          'test without test environment')

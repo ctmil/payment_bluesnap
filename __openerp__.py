@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 {
-    'name': 'BluenSnap Payment Acquirer',
+    'name': 'BlueSnap Payment Acquirer',
     'category': 'Hidden',
-    'summary': 'Payment Acquirer: MercadoPago Implementation',
+    'summary': 'Payment Acquirer: BlueSnap Implementation',
     'version': '9.0.0.0.0',
     'description': """BlueSnap Payment Acquirer""",
     'author': 'Moldeo Interactive - www.moldeo.coop',

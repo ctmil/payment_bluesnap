@@ -11,11 +11,7 @@
                     <group attrs="{'invisible': [('provider', '!=', 'bluesnap')]}">
                         <group>
                             <group>
-
-                                <field name="bluesnap_email"/>
-                                <field name="bluesnap_client_id"/>
-                                <field name="bluesnap_secret_key"/>
-
+                                <field name="bluesnap_merchant_id"/>
                             </group>
                         </group>
                     </group>

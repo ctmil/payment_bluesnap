@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 {
-    'name': 'MercadoPago Payment Acquirer',
+    'name': 'Bluensap Payment Acquirer',
     'category': 'Hidden',
     'summary': 'Payment Acquirer: MercadoPago Implementation',
     'version': '9.0.0.0.0',

@@ -3,18 +3,29 @@
     <data>
         <template id="bluesnap_acquirer_button">
             <form t-if="acquirer" t-att-action="tx_url" method="post" target="_self">
-                <input type="hidden" name="merchandid" t-att-value=""/>
-                <input type="hidden" name="amount" t-att-value="amount"/>
-		<--->
-                <input type="hidden" name="name1" t-att-value=""/>
-                <input type="hidden" name="value1" t-att-value=""/>
-		</--->
+                <input type="hidden" name="merchantid" t-att-value="merchantid"/>
+
+                <input type="hidden" name="name1" t-att-value="name1"/>
+                <input type="hidden" name="value1" t-att-value="value1"/>
+                <input type="hidden" name="amount" t-att-value="amount_currency"/>
+
+                <input type="hidden" name="currency" t-att-value="currency"/>
+		<input type="hidden" name="cartvisible" t-att-value="cartvisible"/>
+		<input type="hidden" name="backtoseller" value="Y"/>
+		<input type="hidden" name="browsertitle" t-att-value="browsertitle"/>
+		<input type="hidden" name="browsertitlevisible" t-att-value="browsertitlevisible"/>
+		<input type="hidden" name="currencyvisible" t-att-value="currencyvisible"/>
+		<input type="hidden" name="currencydisable" t-att-value="currencydisable"/>
+
+                <input type="hidden" name="firstname" t-att-value="firstname"/>
+                <input type="hidden" name="lastname" t-att-value="lastname"/>
+                <input type="hidden" name="email" t-att-value="email"/>
+
 		<button type="submit" width="100px" t-att-class="submit_class">
                     <img t-if="not submit_txt" src="/payment_bluesnap/static/src/img/bluesnap_icon.png"/>
                     <span t-if="submit_txt"><t t-esc="submit_txt"/> <span class="fa fa-long-arrow-right"/></span>
                 </button>
             </form>
         </template>
-
     </data>
 </openerp>

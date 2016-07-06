@@ -26,7 +26,7 @@ class BlueSnapCommon(PaymentAcquirerCommon):
 
         self.payment_acquirer \
             .write(self.cr, self.uid, self.bluesnap_id, {
-                'bluesnap_merchand_id': '500801',
+                'bluesnap_merchand_id': '506279',
             })
 
         # tde+seller@openerp.com -

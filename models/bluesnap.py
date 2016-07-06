@@ -1,7 +1,6 @@
 # -*- coding: utf-'8' "-*-"
 
 import logging
-import urllib2
 
 from openerp import api, fields, models
 from openerp.exceptions import ValidationError
@@ -38,6 +37,35 @@ class AcquirerBlueSnap(models.Model):
     bluesnap_merchant_id = fields.Char(
         'BlueSnap Merchant Id',
         required_if_provider='bluesnap')
+    bluesnap_browsertitle = fields.Char(
+        string='Browser title',
+        help='Defines the title of the browser page, which appear in'
+        ' the browser tab',
+        default=False
+    )
+    bluesnap_cartvisible = fields.Boolean(
+        string='Cart Visible',
+        help='Indicates if the shopping cart is visible.'
+        ' Y – visible (default: Y)',
+        default=True
+    )
+    bluesnap_browsertitlevisible = fields.Boolean(
+        string='Show Browser title',
+        help='Defines whether the title of the browser page is visible',
+        default=False
+    )
+    bluesnap_currencyvisible = fields.Boolean(
+        string='Currency Visible',
+        help='Indicates if the shopper currency preference field is visible.'
+        ' Y – visible (default: Y)',
+        default=True
+    )
+    bluesnap_currencydisable = fields.Boolean(
+        string='Currency Disable',
+        help='Indicates if the shopper currency preference field is disabled.'
+        ' Y - Disabled (default:N)',
+        default=True
+    )
 
     _defaults = {
         'fees_active': False,
@@ -84,10 +112,39 @@ class AcquirerBlueSnap(models.Model):
             _logger.error(error_msg)
             raise ValidationError(error_msg)
 
+        bluesnap_tx_values = dict(values)
         if values.get("reference", "/") != "/":
-            import pdb; pdb.set_trace()
+            bluesnap_tx_values.update({
+                'merchantid': self.bluesnap_merchant_id,
 
-        return values
+                'address1': values['partner_address'],
+                'city': values['partner_city'],
+                'country': values['partner_country'].code,
+                'state': values['partner_state'],
+                'email': values['partner_email'],
+                'firstname': values['partner_first_name'],
+                'lastname': values['partner_last_name'],
+                'zip_code': values['partner_zip'],
+
+                'name1': '%s: %s' % (acquirer.company_id.name,
+                                     values['reference']),
+                'value1': '$%s' % values['amount'],
+
+                'amount_currency': values['amount'],
+                'currency': values['currency'].name,
+
+                'cartvisible': acquirer.bluesnap_cartvisible,
+
+                'browsertitle': acquirer.bluesnap_browsertitle,
+                'browsertitlevisible': acquirer.bluesnap_browsertitlevisible
+                and 'Y' or 'N',
+                'currencyvisible': acquirer.bluesnap_currencyvisible
+                and 'Y' or 'N',
+                'currencydisable': acquirer.bluesnap_currencydisable
+                and 'Y' or 'N',
+            })
+
+        return bluesnap_tx_values
 
     @api.multi
     def bluesnap_get_form_action_url(self):

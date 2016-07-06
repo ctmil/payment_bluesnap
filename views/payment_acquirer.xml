@@ -10,9 +10,18 @@
                 <xpath expr='//group[@name="acquirer"]' position='after'>
                     <group attrs="{'invisible': [('provider', '!=', 'bluesnap')]}">
                         <group>
-                            <group>
-                                <field name="bluesnap_merchant_id"/>
-                            </group>
+                            <field name="bluesnap_merchant_id"/>
+                        </group>
+                    </group>
+                </xpath>
+                <xpath expr='//group[@name="acquirer_config"]' position='after'>
+                    <group attrs="{'invisible': [('provider', '!=', 'bluesnap')]}">
+                        <group string="BuyNow Parameters">
+                            <field name="bluesnap_cartvisible"/>
+                            <field name="bluesnap_browsertitle"/>
+                            <field name="bluesnap_browsertitlevisible"/>
+                            <field name="bluesnap_currencyvisible"/>
+                            <field name="bluesnap_currencydisable"/>
                         </group>
                     </group>
                 </xpath>
